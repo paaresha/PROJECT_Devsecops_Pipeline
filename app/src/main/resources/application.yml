@@ -1,0 +1,67 @@
+# =============================================================================
+# CloudPulse — Application Configuration
+# =============================================================================
+spring:
+  application:
+    name: cloudpulse-api
+
+  # Default profile uses H2 in-memory DB (no external dependencies)
+  datasource:
+    url: jdbc:h2:mem:cloudpulse;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# Actuator endpoints for K8s probes
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# Application info (exposed via /actuator/info)
+info:
+  app:
+    name: CloudPulse
+    description: Cloud Infrastructure Monitoring API
+    version: 1.0.0
+    environment: ${ENVIRONMENT:dev}
+
+# Server config
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# Logging
+logging:
+  level:
+    com.cloudpulse: INFO
+    org.springframework: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,81 +1,15 @@
 # =============================================================================
-# IAM Module — EKS Roles, OIDC Provider, and IRSA
+# IAM Module — OIDC Provider and IRSA Roles
 # =============================================================================
-# This module implements secure IAM patterns:
-# - EKS cluster & node group roles with least-privilege policies
-# - OIDC provider for enabling IRSA (IAM Roles for Service Accounts)
-# - Application-level IRSA role so pods don't use hardcoded AWS keys
-# - ALB Ingress Controller IRSA role
+# This module is applied AFTER the EKS cluster is created.
+# It handles:
+#   - OIDC provider creation (for IRSA)
+#   - Application pod IRSA role (pods assume this via K8s service account)
+#   - ALB Controller IRSA role
+#
+# Base IAM roles (cluster + node group) are created at the root level
+# to avoid circular dependencies with the EKS module.
 # =============================================================================
-
-# ---- EKS Cluster IAM Role ----
-resource "aws_iam_role" "eks_cluster" {
-  name = "${var.project_name}-eks-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name = "${var.project_name}-eks-cluster-role"
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks_cluster.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
-  role       = aws_iam_role.eks_cluster.name
-}
-
-# ---- EKS Node Group IAM Role ----
-resource "aws_iam_role" "eks_nodes" {
-  name = "${var.project_name}-eks-node-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name = "${var.project_name}-eks-node-role"
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.eks_nodes.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.eks_nodes.name
-}
-
-resource "aws_iam_role_policy_attachment" "ecr_read_only" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = aws_iam_role.eks_nodes.name
-}
 
 # ---- OIDC Provider for IRSA ----
 data "tls_certificate" "eks" {
@@ -93,8 +27,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
 }
 
 # ---- IRSA: Application Pod Role ----
-# This role is assumed by the K8s service account via OIDC federation.
-# Pods using this SA get temporary AWS credentials without hardcoded keys.
+# Pods using the annotated K8s service account get temporary AWS credentials.
 resource "aws_iam_role" "app_irsa" {
   name = "${var.project_name}-app-irsa-role"
 
@@ -122,7 +55,7 @@ resource "aws_iam_role" "app_irsa" {
   }
 }
 
-# Example: grant the app role read access to S3 (customize as needed)
+# Example: grant the app role read access to S3 (customize per your needs)
 resource "aws_iam_role_policy" "app_irsa_policy" {
   name = "${var.project_name}-app-policy"
   role = aws_iam_role.app_irsa.id

@@ -37,6 +37,21 @@ output "app_irsa_role_arn" {
   value       = module.iam.app_role_arn
 }
 
+output "alb_controller_role_arn" {
+  description = "ARN of the ALB controller IRSA role"
+  value       = module.iam.alb_controller_role_arn
+}
+
+output "cluster_role_arn" {
+  description = "ARN of the EKS cluster IAM role"
+  value       = aws_iam_role.eks_cluster.arn
+}
+
+output "node_role_arn" {
+  description = "ARN of the EKS node group IAM role"
+  value       = aws_iam_role.eks_nodes.arn
+}
+
 output "configure_kubectl" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"

@@ -64,7 +64,7 @@ spec:
           # Liveness probe — restart container if unhealthy
           livenessProbe:
             httpGet:
-              path: /health
+              path: /api/actuator/health
               port: http
             initialDelaySeconds: 60
             periodSeconds: 15
@@ -74,7 +74,7 @@ spec:
           # Readiness probe — stop routing traffic if not ready
           readinessProbe:
             httpGet:
-              path: /health
+              path: /api/actuator/health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -84,7 +84,7 @@ spec:
           # Startup probe — give the app time to initialize
           startupProbe:
             httpGet:
-              path: /health
+              path: /api/actuator/health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
