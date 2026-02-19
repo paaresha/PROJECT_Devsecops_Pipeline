@@ -1,0 +1,10 @@
+# =============================================================================
+# Namespace — Isolate the vprofile application
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vprofile
+  labels:
+    app: vprofile
+    environment: prod

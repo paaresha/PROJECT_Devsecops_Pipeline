@@ -1,0 +1,50 @@
+# =============================================================================
+# .gitignore — DevSecOps Pipeline
+# =============================================================================
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+tfplan
+.terraform.lock.hcl
+crash.log
+
+# Java / Maven
+app/target/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Docker
+*.tar
+
+# Jenkins
+.jenkins/
+
+# Secrets (never commit these!)
+*.pem
+*.key
+*.env
+.env.local
+credentials.json

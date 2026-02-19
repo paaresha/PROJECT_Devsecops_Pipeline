@@ -1,0 +1,19 @@
+# =============================================================================
+# Service — ClusterIP (internal access, fronted by ALB Ingress)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: vprofile-svc
+  namespace: vprofile
+  labels:
+    app: vprofile
+spec:
+  type: ClusterIP
+  selector:
+    app: vprofile
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
