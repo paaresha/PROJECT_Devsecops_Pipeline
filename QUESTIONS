@@ -9,9 +9,7 @@ What is the purpose of a Kubernetes namespace? Why didn't you deploy into the de
 Explain the difference between a Kubernetes Deployment and a Pod. Why don't you create pods directly?
 What is ECR and how does your Jenkins pipeline authenticate to push images there?
 What does kubectl rollout status do in Stage 12 of your Jenkinsfile, and why is it important?
-What are the 3 types of Kubernetes health probes in your 
-deployment.yaml
-? Explain when each one runs.
+What are the 3 types of Kubernetes health probes in your deployment.yaml ? Explain when each one runs.
 
 
 🟡 Mid Level (3–8 YoE) — 20 Questions
