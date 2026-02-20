@@ -1,0 +1,36 @@
+# =============================================================================
+# ArgoCD Application — Order Service
+# =============================================================================
+# This tells ArgoCD: "Watch gitops/apps/order-service/base/ in Git.
+# Whenever that directory changes, apply the changes to the cluster."
+#
+# The CI pipeline updates the image tag in that directory after building
+# a new Docker image → ArgoCD detects the change → deploys automatically.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: order-service
+  namespace: argocd
+  # Labels help you filter and search in the ArgoCD UI
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    type: application
+  # Finalizer ensures cleanup when the Application is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/kubeflow-ops.git
+    targetRevision: main
+    path: gitops/apps/order-service/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeflow-ops
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

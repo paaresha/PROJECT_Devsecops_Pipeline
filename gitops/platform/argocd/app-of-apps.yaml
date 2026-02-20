@@ -1,0 +1,80 @@
+# =============================================================================
+# ArgoCD — App-of-Apps Pattern
+# =============================================================================
+# WHAT IS THIS?
+# =============================================================================
+# ArgoCD is a tool that runs IN your Kubernetes cluster and watches a Git repo.
+# When you change a YAML file in Git, ArgoCD automatically applies that change
+# to the cluster. This is called "GitOps" — Git is the single source of truth.
+#
+# The "App-of-Apps" pattern means we have ONE parent ArgoCD Application that
+# manages ALL child Applications. Think of it like this:
+#
+#   Parent App (this file)
+#   ├── Child App: order-service
+#   ├── Child App: user-service
+#   ├── Child App: notification-service
+#   ├── Child App: prometheus-stack
+#   ├── Child App: loki
+#   ├── Child App: kyverno
+#   └── Child App: external-secrets
+#
+# When we add a new Application YAML to gitops/platform/argocd/applications/,
+# ArgoCD automatically picks it up and deploys it. No manual steps!
+#
+# KEY TERMS:
+# - Application: An ArgoCD resource that tells it "watch this Git path and
+#                 apply the YAMLs from there to this Kubernetes namespace"
+# - Sync: The process of applying Git changes to the cluster
+# - Self-Heal: If someone manually changes something in the cluster,
+#              ArgoCD detects the "drift" and reverts it to match Git
+# - Prune: If you delete a YAML from Git, ArgoCD deletes it from the cluster
+# =============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  # This is the PARENT Application — it manages all other Applications
+  name: kubeflow-ops-root
+  namespace: argocd  # ArgoCD always runs in the 'argocd' namespace
+
+  # Finalizer ensures that when this app is deleted, ArgoCD cleans up
+  # all child resources in the cluster
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+
+spec:
+  # The ArgoCD project to use (default is fine for most setups)
+  project: default
+
+  # SOURCE: Where ArgoCD should look for Kubernetes manifests
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/kubeflow-ops.git  # ← Replace with your repo
+    targetRevision: main  # Which branch to watch
+    path: gitops/platform/argocd/applications  # Folder containing child Application YAMLs
+
+  # DESTINATION: Where to deploy (which cluster and namespace)
+  destination:
+    server: https://kubernetes.default.svc  # The cluster ArgoCD is running in
+    namespace: argocd
+
+  # SYNC POLICY: How ArgoCD should handle changes
+  syncPolicy:
+    automated:
+      # selfHeal: If someone runs `kubectl edit` and changes something manually,
+      # ArgoCD will revert it to match what's in Git. This prevents config drift.
+      selfHeal: true
+
+      # prune: If you delete a YAML file from Git, ArgoCD will also delete
+      # the corresponding resource from the cluster.
+      prune: true
+
+    syncOptions:
+      - CreateNamespace=true  # Auto-create namespaces if they don't exist
+
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

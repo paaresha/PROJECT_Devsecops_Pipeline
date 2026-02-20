@@ -1,0 +1,52 @@
+# =============================================================================
+# ArgoCD Application — Tempo (Distributed Tracing)
+# =============================================================================
+# Tempo collects traces from the OpenTelemetry-instrumented microservices.
+# This lets you see the full journey of a single request across all 3 services:
+#   User → order-service → user-service → SQS → notification-service
+# Each step is called a "span" and the full journey is a "trace".
+# You can view traces in Grafana linked from logs and metrics.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    type: observability
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: tempo
+    targetRevision: 1.10.3
+    helm:
+      releaseName: tempo
+      values: |
+        tempo:
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: "0.0.0.0:4317"
+          storage:
+            trace:
+              backend: local
+              local:
+                path: /var/tempo/traces
+          retention: 72h  # Keep traces for 3 days
+        persistence:
+          enabled: true
+          size: 5Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

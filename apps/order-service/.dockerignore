@@ -1,0 +1,40 @@
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose*.yml
+Dockerfile
+
+# Tests
+tests/
+pytest.ini
+.coverage
+
+# Docs
+*.md
+LICENSE
+
+# Terraform
+terraform/
+
+# GitOps
+gitops/
+
+# CI/CD
+.github/

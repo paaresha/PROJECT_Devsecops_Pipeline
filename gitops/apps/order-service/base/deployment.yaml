@@ -1,0 +1,134 @@
+# =============================================================================
+# Order Service — Kubernetes Deployment (Base)
+# =============================================================================
+# This is the base deployment. Environment-specific patches (replica count,
+# resource limits) are applied via Kustomize overlays.
+#
+# Key Concepts:
+# - 3 types of health probes ensure reliable pod lifecycle management
+# - Resource requests/limits prevent noisy-neighbor problems
+# - Pod anti-affinity spreads replicas across nodes for high availability
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: kubeflow-ops
+  labels:
+    app: order-service
+    team: platform
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        team: platform
+        version: v1
+      annotations:
+        # Tells Prometheus to scrape this pod's /metrics endpoint
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: kubeflow-ops-sa
+      # ── Security Context ──────────────────────────────────────────────
+      # Run as non-root (Kyverno policy will enforce this)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: order-service
+          image: IMAGE_PLACEHOLDER  # Replaced by CI pipeline with actual ECR image
+          ports:
+            - containerPort: 8001
+              name: http
+              protocol: TCP
+
+          # ── Environment Variables ────────────────────────────────────
+          # In production, these come from ConfigMaps and External Secrets.
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: url
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: sqs-queue-url
+            - name: USER_SERVICE_URL
+              value: "http://user-service.kubeflow-ops.svc.cluster.local:8002"
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: aws-region
+            - name: OTLP_ENDPOINT
+              value: "tempo.observability.svc.cluster.local:4317"
+
+          # ── Resource Requests & Limits ───────────────────────────────
+          # requests = guaranteed minimum (scheduler uses this)
+          # limits   = maximum allowed (OOM-killed if exceeded)
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+          # ── Health Probes ────────────────────────────────────────────
+          # 1. startupProbe: Runs FIRST. Gives the app time to start.
+          #    While this is failing, liveness/readiness probes don't run.
+          #    Prevents slow-starting apps from being killed prematurely.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30    # 30 x 5s = 150s max startup time
+
+          # 2. livenessProbe: "Is the process alive and not stuck?"
+          #    If this fails, Kubernetes RESTARTS the container.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # 3. readinessProbe: "Can this pod handle traffic right now?"
+          #    If this fails, Kubernetes REMOVES the pod from the Service
+          #    (no traffic routed to it) but does NOT restart it.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+      # ── Pod Anti-Affinity ──────────────────────────────────────────────
+      # Spreads replicas across different nodes for high availability.
+      # If one node dies, you still have pods running on other nodes.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - order-service
+                topologyKey: kubernetes.io/hostname

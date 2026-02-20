@@ -1,0 +1,14 @@
+# =============================================================================
+# Namespace — kubeflow-ops
+# =============================================================================
+# All application workloads run in this namespace (not in 'default').
+# This provides isolation and makes it easier to apply RBAC and resource quotas.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeflow-ops
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    # This label tells Prometheus to scrape pods in this namespace
+    prometheus.io/scrape: "true"

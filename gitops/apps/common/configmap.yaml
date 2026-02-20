@@ -1,0 +1,14 @@
+# =============================================================================
+# Application ConfigMap
+# =============================================================================
+# Non-sensitive configuration. Secrets go in AWS Secrets Manager + External Secrets.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: kubeflow-ops
+data:
+  aws-region: "us-east-1"
+  sqs-queue-url: "PLACEHOLDER_AFTER_TERRAFORM_APPLY"
+  redis-url: "PLACEHOLDER_AFTER_TERRAFORM_APPLY"

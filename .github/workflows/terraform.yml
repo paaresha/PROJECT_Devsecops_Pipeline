@@ -1,0 +1,102 @@
+# =============================================================================
+# GitHub Actions — Terraform IaC Pipeline
+# =============================================================================
+# Runs terraform plan on PRs (for review) and apply on merge to main.
+# Includes format check, validation, and security scanning.
+# =============================================================================
+
+name: Terraform — Plan & Apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  TF_WORKING_DIR: terraform/environments/dev
+
+jobs:
+  terraform:
+    name: Terraform Plan & Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      # ── Format Check ────────────────────────────────────────────────
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive ../../terraform/
+        continue-on-error: true
+
+      # ── Initialize ──────────────────────────────────────────────────
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      # ── Validate ────────────────────────────────────────────────────
+      - name: Terraform Validate
+        run: terraform validate
+
+      # ── Security Scan with Trivy ────────────────────────────────────
+      - name: Scan Terraform with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'terraform/'
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+
+      # ── Plan ────────────────────────────────────────────────────────
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -input=false -no-color -out=tfplan
+        continue-on-error: true
+
+      # ── Comment Plan on PR ──────────────────────────────────────────
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `### Terraform Plan 📐
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            *Triggered by @${{ github.actor }}*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      # ── Apply (main branch only) ────────────────────────────────────
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve -input=false tfplan

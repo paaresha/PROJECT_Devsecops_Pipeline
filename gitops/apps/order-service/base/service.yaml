@@ -1,0 +1,22 @@
+# =============================================================================
+# Order Service — Kubernetes Service
+# =============================================================================
+# A Service provides a stable DNS name and IP for accessing pods.
+# Other services call this via: http://order-service.kubeflow-ops.svc.cluster.local:8001
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: kubeflow-ops
+  labels:
+    app: order-service
+spec:
+  type: ClusterIP    # Internal only. Use Ingress for external access.
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 8001
+      targetPort: http
+      protocol: TCP

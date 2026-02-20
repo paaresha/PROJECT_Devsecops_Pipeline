@@ -1,50 +1,51 @@
 # =============================================================================
-# .gitignore — DevSecOps Pipeline
+# .gitignore — KubeFlow Ops
 # =============================================================================
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.backup
-*.tfplan
-tfplan
-.terraform.lock.hcl
-crash.log
-
-# Java / Maven
-app/target/
-target/
-*.class
-*.jar
-*.war
-*.ear
-*.log
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+*.eggs/
+dist/
+build/
+.coverage
+htmlcov/
 
 # IDE
 .idea/
 .vscode/
-*.iml
-*.iws
-*.ipr
-.project
-.classpath
-.settings/
-
-# OS Files
-.DS_Store
-Thumbs.db
 *.swp
 *.swo
+*.code-workspace
+
+# Environment
+.env
+.env.local
+*.tfvars
+!*.tfvars.example
+
+# Terraform
+terraform/.terraform/
+terraform/**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
 
 # Docker
-*.tar
+docker-compose.override.yml
 
-# Jenkins
-.jenkins/
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# Secrets (never commit these!)
-*.pem
-*.key
-*.env
-.env.local
-credentials.json
+# Logs
+*.log
+
+# Node (if any tooling uses it)
+node_modules/

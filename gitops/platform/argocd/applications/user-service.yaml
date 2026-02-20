@@ -1,0 +1,26 @@
+# ArgoCD Application — User Service
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: user-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    type: application
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/kubeflow-ops.git
+    targetRevision: main
+    path: gitops/apps/user-service/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubeflow-ops
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

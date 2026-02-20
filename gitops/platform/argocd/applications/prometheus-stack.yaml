@@ -1,0 +1,91 @@
+# =============================================================================
+# ArgoCD Application — Prometheus + Grafana (kube-prometheus-stack)
+# =============================================================================
+# This deploys the full monitoring stack in one shot:
+# - Prometheus (collects metrics from all pods)
+# - Grafana (dashboards and visualization)
+# - Alertmanager (routes alerts to Slack/email/PagerDuty)
+# - node-exporter (host-level metrics)
+# - kube-state-metrics (Kubernetes object metrics)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    type: observability
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 65.1.0
+    helm:
+      releaseName: prometheus-stack
+      values: |
+        # ── Grafana Configuration ──────────────────────────────────────
+        grafana:
+          enabled: true
+          adminPassword: "admin"  # Change this! Use External Secrets in production.
+
+          # Pre-install data sources so Grafana connects to Prometheus, Loki, Tempo
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              url: http://loki.observability.svc.cluster.local:3100
+              access: proxy
+            - name: Tempo
+              type: tempo
+              url: http://tempo.observability.svc.cluster.local:3100
+              access: proxy
+
+          # Grafana dashboard auto-discovery
+          sidecar:
+            dashboards:
+              enabled: true
+              searchNamespace: ALL
+
+        # ── Prometheus Configuration ───────────────────────────────────
+        prometheus:
+          prometheusSpec:
+            # How long to keep metrics data
+            retention: 7d
+            # Storage for metrics (EBS volume via PVC)
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
+
+            # Scrape all ServiceMonitors across all namespaces
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+
+        # ── Alertmanager Configuration ─────────────────────────────────
+        alertmanager:
+          enabled: true
+          alertmanagerSpec:
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 2Gi
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true  # Required for CRDs in kube-prometheus-stack

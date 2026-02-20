@@ -1,0 +1,44 @@
+# =============================================================================
+# ArgoCD Application — Loki (Log Aggregation)
+# =============================================================================
+# Loki collects logs from ALL pods in the cluster via Promtail.
+# You can search and filter logs in Grafana without SSH-ing into nodes.
+# Think of it as "grep for your entire cluster" — but in a web UI.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: kubeflow-ops
+    type: observability
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: 2.10.2
+    helm:
+      releaseName: loki
+      values: |
+        loki:
+          enabled: true
+          persistence:
+            enabled: true
+            size: 10Gi
+        promtail:
+          enabled: true
+        grafana:
+          enabled: false  # Already deployed via prometheus-stack
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,113 @@
+# =============================================================================
+# Docker Compose — Local Development Environment
+# =============================================================================
+# Starts all 3 microservices + their dependencies (Postgres, Redis, LocalStack)
+# in a single command: docker-compose up
+#
+# LocalStack simulates AWS SQS locally so you don't need an AWS account for dev.
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL Database ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kubeflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (for notification deduplication) ───────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── LocalStack (simulates AWS SQS locally) ──────────────────────────────
+  # Why LocalStack? So you can develop and test SQS integration without
+  # needing an AWS account or incurring costs during local development.
+  localstack:
+    image: localstack/localstack:3.0
+    environment:
+      SERVICES: sqs
+      DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+
+  # ── Order Service ────────────────────────────────────────────────────────
+  order-service:
+    build:
+      context: ./apps/order-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/kubeflow
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
+      USER_SERVICE_URL: http://user-service:8002
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      OTLP_ENDPOINT: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+      user-service:
+        condition: service_started
+
+  # ── User Service ─────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./apps/user-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/kubeflow
+      OTLP_ENDPOINT: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Notification Service ─────────────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./apps/notification-service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-events
+      REDIS_URL: redis://redis:6379/0
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      OTLP_ENDPOINT: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+
+volumes:
+  postgres_data:

@@ -1,0 +1,44 @@
+# =============================================================================
+# Order Service — Horizontal Pod Autoscaler (HPA)
+# =============================================================================
+# Automatically scales pod replicas based on CPU utilization.
+# When average CPU > 70%, HPA adds more pods. When it drops, it removes them.
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: kubeflow-ops
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # Wait 5 min before scaling down (prevents flapping)
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60             # Remove max 1 pod per minute
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60             # Add up to 4 pods per minute during spikes

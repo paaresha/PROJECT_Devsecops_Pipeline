@@ -1,0 +1,136 @@
+# =============================================================================
+# Kyverno Policies — Security Guardrails
+# =============================================================================
+# These policies enforce best practices across the cluster.
+# They act as automated code review for Kubernetes manifests.
+# =============================================================================
+
+# ── Policy 1: Block 'latest' image tag ──────────────────────────────────────
+# Why? The 'latest' tag is mutable — you can't guarantee what code is running.
+# Always use a specific tag (like a git SHA) for traceability.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Using the 'latest' tag is dangerous because it's mutable.
+      Always use a specific version or commit SHA.
+spec:
+  validationFailureAction: Enforce  # Block the deployment (not just warn)
+  background: true
+  rules:
+    - name: validate-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Image tag 'latest' is not allowed. Use a specific tag like a git SHA."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+---
+# ── Policy 2: Require resource limits ────────────────────────────────────────
+# Why? Without limits, a single pod can consume all CPU/memory on a node,
+# causing other pods to crash (the "noisy neighbor" problem).
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-resources
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - argocd
+                - kyverno
+                - observability
+      validate:
+        message: "CPU and memory limits are required for all containers."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+---
+# ── Policy 3: Require specific labels ────────────────────────────────────────
+# Why? Labels are essential for monitoring, debugging, and cost tracking.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Labels
+    policies.kyverno.io/severity: low
+spec:
+  validationFailureAction: Audit  # Warn but don't block (softer enforcement)
+  background: true
+  rules:
+    - name: check-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - argocd
+                - kyverno
+      validate:
+        message: "Labels 'app' and 'team' are required."
+        pattern:
+          metadata:
+            labels:
+              app: "?*"
+              team: "?*"
+---
+# ── Policy 4: Block privileged containers ────────────────────────────────────
+# Why? Privileged containers have full access to the host — a huge security risk.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"

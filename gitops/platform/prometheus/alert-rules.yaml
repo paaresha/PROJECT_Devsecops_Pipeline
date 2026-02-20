@@ -1,0 +1,93 @@
+# =============================================================================
+# Prometheus Alert Rules — Production-Grade Alerts
+# =============================================================================
+# These alerts fire when something is wrong with the application or cluster.
+# Alertmanager routes them to Slack/SNS based on severity.
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubeflow-ops-alerts
+  namespace: observability
+  labels:
+    # This label tells Prometheus to load these rules
+    release: prometheus-stack
+spec:
+  groups:
+    # ── Application Alerts ─────────────────────────────────────────────
+    - name: application.rules
+      rules:
+        # Alert: High error rate (>5% HTTP 5xx in 5 minutes)
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate on {{ $labels.service }}"
+            description: "{{ $labels.service }} has >5% error rate (current: {{ $value | humanizePercentage }})"
+
+        # Alert: High latency (p95 > 2 seconds)
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency on {{ $labels.service }}"
+            description: "P95 latency is {{ $value }}s on {{ $labels.service }}"
+
+    # ── Kubernetes Alerts ──────────────────────────────────────────────
+    - name: kubernetes.rules
+      rules:
+        # Alert: Pod crashing repeatedly
+        - alert: PodCrashLoopBackOff
+          expr: |
+            kube_pod_container_status_restarts_total
+            - kube_pod_container_status_restarts_total offset 10m > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash-looping"
+            description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} has restarted >3 times in 10 minutes"
+
+        # Alert: Pod not ready for more than 5 minutes
+        - alert: PodNotReady
+          expr: |
+            kube_pod_status_ready{condition="true"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} is not ready"
+            description: "Pod {{ $labels.pod }} in {{ $labels.namespace }} has been not ready for 5+ minutes"
+
+        # Alert: Node disk pressure
+        - alert: NodeDiskPressure
+          expr: |
+            kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} has disk pressure"
+            description: "Node {{ $labels.node }} is running low on disk space"
+
+        # Alert: High node CPU usage
+        - alert: HighNodeCPU
+          expr: |
+            100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU on {{ $labels.instance }}"
+            description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
