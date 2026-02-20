@@ -20,11 +20,11 @@ variable "eks_oidc_issuer_url" {
 variable "app_namespace" {
   description = "Kubernetes namespace for the application"
   type        = string
-  default     = "vprofile"
+  default     = "cloudpulse"
 }
 
 variable "app_service_account" {
   description = "Kubernetes service account name for the application"
   type        = string
-  default     = "vprofile-sa"
+  default     = "cloudpulse-sa"
 }

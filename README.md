@@ -59,7 +59,7 @@ graph TB
 │       ├── iam/                  # Cluster roles, OIDC, IRSA
 │       └── eks/                  # EKS cluster + managed node group
 ├── kubernetes/                   # Phase 4: K8s manifests
-│   ├── namespace.yaml            # vprofile namespace
+│   ├── namespace.yaml            # cloudpulse namespace
 │   ├── service-account.yaml      # IRSA-annotated service account
 │   ├── deployment.yaml           # Rolling update deployment
 │   ├── service.yaml              # ClusterIP service
@@ -199,7 +199,7 @@ kubectl apply -f kubernetes/ingress.yaml
 | `kubernetes/service-account.yaml` | `<ACCOUNT_ID>` | Your AWS Account ID |
 | `kubernetes/ingress.yaml` | `<ACCOUNT_ID>` | Your AWS Account ID |
 | `kubernetes/ingress.yaml` | `<CERT_ID>` | Your ACM Certificate ID |
-| `kubernetes/ingress.yaml` | `vprofile.yourdomain.com` | Your actual domain |
+| `kubernetes/ingress.yaml` | `cloudpulse.yourdomain.com` | Your actual domain |
 
 ---
 

@@ -223,7 +223,7 @@ pipeline {
                     kubectl apply -f kubernetes/ingress.yaml
 
                     # Wait for rollout to complete
-                    kubectl rollout status deployment/vprofile-app -n vprofile --timeout=300s
+                    kubectl rollout status deployment/cloudpulse-app -n cloudpulse --timeout=300s
                 """
                 echo "✅ Application deployed to EKS successfully"
             }

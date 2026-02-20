@@ -111,8 +111,8 @@ module "iam" {
   project_name        = var.project_name
   environment         = var.environment
   eks_oidc_issuer_url = module.eks.oidc_issuer_url
-  app_namespace       = "vprofile"
-  app_service_account = "vprofile-sa"
+  app_namespace       = "cloudpulse"
+  app_service_account = "cloudpulse-sa"
 
   depends_on = [module.eks]
 }

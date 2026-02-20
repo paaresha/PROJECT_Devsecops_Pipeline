@@ -1,19 +1,19 @@
 # =============================================================================
-# Deployment — vProfile Application (Production-Ready)
+# Deployment — CloudPulse Application (Production-Ready)
 # =============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vprofile-app
-  namespace: vprofile
+  name: cloudpulse-app
+  namespace: cloudpulse
   labels:
-    app: vprofile
+    app: cloudpulse
     version: v2
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: vprofile
+      app: cloudpulse
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,10 +22,10 @@ spec:
   template:
     metadata:
       labels:
-        app: vprofile
+        app: cloudpulse
         version: v2
     spec:
-      serviceAccountName: vprofile-sa
+      serviceAccountName: cloudpulse-sa
       terminationGracePeriodSeconds: 30
 
       # Security context at the pod level
@@ -34,7 +34,7 @@ spec:
         fsGroup: 1000
 
       containers:
-        - name: vprofile
+        - name: cloudpulse
           # IMAGE_PLACEHOLDER is replaced by Jenkins during deployment
           image: IMAGE_PLACEHOLDER
           imagePullPolicy: Always

@@ -1,10 +1,10 @@
 # =============================================================================
-# Namespace — Isolate the vprofile application
+# Namespace — Isolate the cloudpulse application
 # =============================================================================
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: vprofile
+  name: cloudpulse
   labels:
-    app: vprofile
+    app: cloudpulse
     environment: prod

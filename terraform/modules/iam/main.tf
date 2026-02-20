@@ -17,6 +17,8 @@ data "tls_certificate" "eks" {
 }
 
 resource "aws_iam_openid_connect_provider" "eks" {
+    # This tells AWS: "I trust this specific EKS cluster's identity."
+
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
   url             = var.eks_oidc_issuer_url

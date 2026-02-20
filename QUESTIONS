@@ -1,0 +1,50 @@
+📝 DevSecOps Pipeline — Interview Questions
+🟢 Normal Level (1–3 YoE) — 10 Questions
+What is the difference between a public subnet and a private subnet? Why do your EKS worker nodes run in private subnets?
+What is a NAT Gateway and why is it needed if the worker nodes are in private subnets?
+Explain the difference between terraform plan and terraform apply. Why do you save the plan to a file?
+What is a multi-stage Docker build and what problem does it solve in your Dockerfile?
+Why does your container run as a non-root user? What happens if an attacker exploits the application?
+What is the purpose of a Kubernetes namespace? Why didn't you deploy into the default namespace?
+Explain the difference between a Kubernetes Deployment and a Pod. Why don't you create pods directly?
+What is ECR and how does your Jenkins pipeline authenticate to push images there?
+What does kubectl rollout status do in Stage 12 of your Jenkinsfile, and why is it important?
+What are the 3 types of Kubernetes health probes in your 
+deployment.yaml
+? Explain when each one runs.
+
+
+🟡 Mid Level (3–8 YoE) — 20 Questions
+Walk me through the circular dependency problem between your IAM and EKS Terraform modules. How did you solve it?
+What is IRSA? Explain the full chain from the OIDC provider in Terraform to the service account annotation in Kubernetes to the pod getting temporary credentials.
+Your Jenkinsfile runs Trivy twice — once at Stage 2 (filesystem scan) and once at Stage 7 (image scan). Why not just one? What does each catch that the other doesn't?
+Explain the cidrsubnet(var.vpc_cidr, 4, count.index) function. If the VPC CIDR is 10.0.0.0/16, what CIDR blocks does it produce for 3 public subnets?
+Your deployment uses maxSurge: 1 and maxUnavailable: 0. Walk me through exactly what happens pod-by-pod during a rolling update from v1 to v2.
+Why is image_tag_mutability = "IMMUTABLE" set on the ECR repository? What supply chain attack does it prevent?
+Explain the difference between target-type: ip and target-type: instance in your ALB Ingress. What are the trade-offs?
+Your HPA scales up in 60 seconds but takes 5 minutes to scale down. Why is the scale-down window longer? What problem does this prevent?
+What happens if someone in the default namespace creates a pod and tries to assume your IRSA role cloudpulse-app-irsa-role? Will it work? Why or why not?
+Explain remote state with S3 and DynamoDB locking. What happens if two engineers run terraform apply simultaneously without the DynamoDB lock?
+Your Kubernetes security context has capabilities: drop: - ALL. What are Linux capabilities? Name 3 dangerous ones and what they allow.
+The Dockerfile uses COPY app/pom.xml . before COPY app/src ./src. How does this exploit Docker layer caching? What's the build time impact?
+In your Jenkins pipeline, Stage 10 has submitter: 'admin,devops-team'. What would happen if you removed this field? Why is it a compliance concern?
+Your EKS cluster has endpoint_public_access = true with public_access_cidrs = ["0.0.0.0/0"]. How would you harden this in a real production environment?
+Explain the depends_on block in your EKS module call. Why does it list the policy attachments and not just the role resource? What would fail if you only listed the role?
+What is the difference between resources.requests and resources.limits in your deployment? How does each one affect pod scheduling and HPA calculations?
+Your Jenkins pipeline does sed -i 's|IMAGE_PLACEHOLDER|...|g' in Stage 12. What are the downsides of this approach? How would GitOps (e.g., ArgoCD) handle this differently?
+Why did you enable all 5 EKS control plane log types? Which specific log type would you use to investigate a security incident where someone deleted a production deployment?
+Your application-prod.yml has ddl-auto: validate while the default profile has ddl-auto: update. Why the difference? What would go wrong if production used update ?
+The ALB Ingress terminates TLS at the load balancer. Traffic between the ALB and pods is unencrypted. Is this acceptable? Under what compliance requirement would it NOT be acceptable, and how would you fix it?
+
+
+🔴 Senior Level (15+ YoE) — 10 Questions
+If you had to design this pipeline for a team of 50 engineers across 20 microservices, what architectural changes would you make to the Terraform modules, Jenkinsfile, and Kubernetes manifests to avoid duplication while still allowing per-service customization?
+Your single NAT Gateway is a single point of failure. Design a cost-aware, multi-AZ NAT solution and explain the trade-offs vs. using VPC endpoints for ECR and S3 instead of NAT entirely.
+The manual approval gate in Stage 10 creates a deployment bottleneck. How would you design a progressive delivery system using canary deployments and automated rollback based on error rate metrics — replacing the human approval entirely?
+Walk me through the failure modes of this pipeline if the Jenkins agent dies mid-execution at each critical stage (after Docker push but before Terraform apply, after Terraform apply but before K8s deploy, during K8s rollout). How would you make each stage idempotent and recoverable?
+You're running 20 microservices in this EKS cluster. One service suddenly starts consuming 80% of the cluster's CPU, starving the others. Design a multi-layer resource isolation strategy using namespaces, ResourceQuotas, LimitRanges, PriorityClasses, and pod disruption budgets.
+An interviewer says: "IRSA solves the secret management problem." Push back on this — what are the limitations of IRSA? When would you still need an external secret management solution like HashiCorp Vault or AWS Secrets Manager, and how would you integrate it into this pipeline?
+This pipeline couples infrastructure provisioning (Terraform) with application deployment (K8s) in the same Jenkinsfile. Critique this design. How would you separate infrastructure and application lifecycles in a mature organization, and what would the triggering mechanism between them look like?
+Your Trivy quality gate fails the build on any HIGH/CRITICAL CVE. In practice, this blocks deployments for CVEs in base OS packages you don't control. Design a policy engine that allows teams to accept known risks with an expiration date, while still failing on new, unreviewed vulnerabilities.
+The EKS cluster version is pinned at 1.29. Design a zero-downtime Kubernetes version upgrade strategy for this cluster — covering control plane upgrade, add-on compatibility matrix, managed node group rolling replacement, and application validation at each stage. How do you test in staging what the production upgrade will look like?
+If you had to present this project to a CISO and argue that it meets SOC 2 Type II requirements, which specific controls would you map each component to? Where are the gaps, and what additional tooling (OPA/Gatekeeper, Falco, audit log SIEM integration) would you add to close them?

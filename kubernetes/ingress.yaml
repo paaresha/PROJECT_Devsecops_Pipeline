@@ -12,10 +12,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: vprofile-ingress
-  namespace: vprofile
+  name: cloudpulse-ingress
+  namespace: cloudpulse
   labels:
-    app: vprofile
+    app: cloudpulse
   annotations:
     # AWS Load Balancer Controller annotations
     alb.ingress.kubernetes.io/scheme: internet-facing
@@ -41,13 +41,13 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: vprofile.yourdomain.com  # Replace with your actual domain
+    - host: cloudpulse.yourdomain.com  # Replace with your actual domain
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: vprofile-svc
+                name: cloudpulse-svc
                 port:
                   number: 80
